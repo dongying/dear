@@ -30,8 +30,7 @@ class AudioBase(object):
     def __len__(self):
         return self.duration
 
-    def walk(self, win=1024, step=None, start=0, end=None,
-            join_channels=False):
+    def walk(self, win, step, start, end, join_channels):
         '''Generator that walks through the audio.'''
         raise NotImplementedError
 

@@ -53,7 +53,7 @@ class Audio(AudioBase):
         return sum(chs) / channels
 
     def walk(self, win=1024, step=None, start=0, end=None,
-            join_channels=False):
+            join_channels=True):
         if not step:
             step = win
         if not end:
