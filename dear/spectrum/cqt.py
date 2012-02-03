@@ -12,37 +12,58 @@ class Spectrum(SpectrumBase):
     '''Spectrum of Constant-Q Transform'''
 
     @staticmethod
-    def pre_calculate(Q, k_max, win, win_shape):
+    def pre_calculate(Q, k_max, win, win_shape, pre=True):
         var = {}
         #
         t = 1 + 1/float(Q)
         WL = [max(2, int(round(win / t**k))) for k in xrange(k_max+1)]
-        PRE = []
-        for wl in WL:
-            arr = 2.*numpy.pi * numpy.arange(wl) / wl
-            PRE.append(
-                win_shape(wl) * (numpy.cos(arr*Q) - numpy.sin(arr*Q)*1j)
-            )
-        var.update({'WL':WL, 'PRE':PRE})
-        #print var
+        var['WL'] = WL
+        if pre:
+            PRE = []
+            for wl in WL:
+                arr = 2.*numpy.pi * numpy.arange(wl) / wl
+                PRE.append(
+                    win_shape(wl) * (numpy.cos(arr*Q) - numpy.sin(arr*Q)*1j)
+                )
+            var['PRE'] = PRE
+        else:
+            var['W'] = [win_shape(wl) for wl in WL]
         #
         return type('variables', (object,), var)
 
     @staticmethod
-    def transform(samples, Q, k_max=None, win_shape=numpy.hamming, pre_var=None):
+    def transform_pre(samples, Q, k_max=None, win_shape=numpy.hamming,
+            pre_var=None):
         if not pre_var:
             if not k_max:
                 assert 1 < Q <= len(samples) / 2
                 k_max = int(numpy.log2(float(len(samples))/Q/2) \
                         / numpy.log2(float(Q+1)/Q))
-            pre_var = Spectrum.pre_calculate(Q,k_max,len(samples),win_shape)
+            pre_var = Spectrum.pre_calculate(Q,k_max,len(samples),win_shape,
+                    pre=True)
         frame = numpy.array(
             [numpy.sum(samples[:wl] * pre) / wl \
                 for wl,pre in zip(pre_var.WL, pre_var.PRE)])
         return frame
 
+    @staticmethod
+    def transform(samples, Q, k_max=None, win_shape=numpy.hamming,
+            pre_var=None):
+        if not pre_var:
+            if not k_max:
+                assert 1 < Q <= len(samples) / 2
+                k_max = int(numpy.log2(float(len(samples))/Q/2) \
+                        / numpy.log2(float(Q+1)/Q))
+            pre_var = Spectrum.pre_calculate(Q,k_max,len(samples),win_shape,
+                    pre=False)
+        frame = []
+        for k, (w, wl) in enumerate(zip(pre_var.W, pre_var.WL)):
+            f = numpy.fft.rfft(w * samples[:wl])
+            frame.append(f[Q] / wl)
+        return numpy.array(frame)
+
     def walk(self, Q, freq_base=A0, freq_max=None, hop=0.02, start=0, end=None,
-            join_channels=True, win_shape=numpy.hamming):
+            join_channels=True, win_shape=numpy.hamming, mpre=False):
         ''''''
         #
         Q = int(Q)
@@ -59,13 +80,14 @@ class Spectrum(SpectrumBase):
         k_max = int(numpy.log2(float(freq_max)/freq_base) \
                 / numpy.log2(float(Q+1)/Q))
         #
-        var = self.pre_calculate(Q, k_max, win, win_shape)
+        var = self.pre_calculate(Q, k_max, win, win_shape, mpre)
+        transform = mpre and self.transform_pre or self.transform
         #
         for samples in self.audio.walk(win, step, start, end, join_channels):
             if join_channels:
-                yield self.transform(samples, Q, k_max, pre_var=var)
+                yield transform(samples, Q, k_max, pre_var=var)
             else:
-                yield [self.transform(ch,Q,k_max,pre_var=var) \
+                yield [transform(ch,Q,k_max,pre_var=var) \
                         for ch in samples]
 
 
