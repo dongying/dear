@@ -42,7 +42,8 @@ class Audio(AudioBase):
                 float)
         pcms = pcms / self._max_pulse_value
         if channels <= 1:
-            return join and pcms or [pcms]
+            if join: return pcms
+            return [pcms]
         chs = []
         for i in range(channels):
             chs.append(
@@ -57,9 +58,9 @@ class Audio(AudioBase):
         if not step:
             step = win
         if not end:
-            end = float('inf')
+            end = self._duration
         assert win >= step > 0
-        assert start > 0
+        assert start >= 0
         if start >= self._duration or end <= start:
             raise StopIteration
         #
@@ -78,8 +79,8 @@ class Audio(AudioBase):
                 break
             win_buf += buf
             while len(win_buf) > win_len:
-                nbuf, win_buf = win_buf[:win_len], win_buf[step_len:]
-                yield self._pcm_bin2num(nbuf, fh.channels, join_channels)
+                yield self._pcm_bin2num(win_buf[:win_len], fh.channels, join_channels)
+                win_buf = win_buf[step_len:]
         #
         win_buf += '\0' * (win_len - len(win_buf))
         yield self._pcm_bin2num(win_buf, fh.channels, join_channels)
