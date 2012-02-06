@@ -8,7 +8,7 @@ import matplotlib.cm as cm
 from matplotlib.image import NonUniformImage
 import matplotlib.colors as colo
 
-from dear.spectrum import cqt, dft
+from dear.spectrum import cqt, dft, auditory
 
 
 def plot_spectrogram(spec, Xd=(0,1), Yd=(0,1)):
@@ -60,6 +60,10 @@ Option:
         cnt --- Constant-N transform
             [-n]    N, default 24
             [-h]    hop in second, default 0.02
+
+        Y1...Y5 --- Auditory Spectrograms
+            [-n]    N, default 24
+            [-h]    hop in second, default 0.01
 """
         exit()
 
@@ -88,8 +92,13 @@ Option:
         elif o == '-t':
             to = float(a)
         elif o == '-g':
-            graph = a.lower()
-            assert graph in ('dft','cqt','cnt')
+            graph = a
+            assert graph in ('dft','cqt','cnt','Y1','Y2','Y3','Y4','Y5')
+
+    if to is None or to > audio.duration:
+        r_to = audio.duration
+    else:
+        r_to = to
 
     if graph == 'dft':
         win = 2048
@@ -127,11 +136,34 @@ Option:
                 hop = float(a)
         spec = [[]]
         gram = cqt.CNTSpectrum(audio)
-        for freqs in gram.walk(N=N, hop=hop, start=st, end=to, join_channels=True):
+        print 'total:', int((r_to-st)/hop)
+        for t, freqs in enumerate(gram.walk(N=N, hop=hop, start=st, end=to)):
+            if t%100==0:
+                sys.stdout.write('%d...' % t)
+                sys.stdout.flush()
             spec[0].append(abs(freqs))
+        print ""
 
-    if to is None or to > audio.duration:
-        to = audio.duration
+    elif graph in ('Y1','Y2','Y3','Y4','Y5'):
+        N = 24
+        hop = 0.01
+        for o, a in opts:
+            if o == '-n':
+                N = int(a)
+            elif o == '-h':
+                hop = float(a)
+        spec = [[]]
+        #gram = cqt.CNTSpectrum(audio)
+        gram = getattr(auditory,graph)
+        gram = gram(audio)
+        print 'total:', int((r_to-st)/hop)
+        for t, freqs in enumerate(gram.walk(N=N, hop=hop, start=st, end=to)):
+            if t%100==0:
+                sys.stdout.write('%d...' % t)
+                sys.stdout.flush()
+            spec[0].append(abs(freqs))
+        print ""
 
-    plot_spectrogram(numpy.array(spec), (st,to), (0.,1.))
+
+    plot_spectrogram(numpy.array(spec), (st,r_to), (0.,1.))
 
