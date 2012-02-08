@@ -46,13 +46,13 @@ class Y2(Y1):
 class Y3(Y2):
     def walk(self, *args, **kw):
         for vector in super(Y3, self).walk(*args, **kw):
-            yield numpy.diff(vector,1)
+            yield numpy.append(vector[0], numpy.diff(vector,1))
 
 
 class Y4(Y3):
     def walk(self, *args, **kw):
         for vector in super(Y4, self).walk(*args, **kw):
-            yield (vector + numpy.abs(vector))/2
+            yield numpy.maximum(vector, 0)
 
 
 class Y5(Y4):
