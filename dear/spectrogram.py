@@ -8,10 +8,10 @@ import matplotlib.cm as cm
 from matplotlib.image import NonUniformImage
 import matplotlib.colors as colo
 
-from dear.spectrum import cqt, dft, auditory
+from dear.spectrum import cqt, dft, auditory, SpectrogramFile
 
 
-def plot_spectrogram(spec, Xd=(0,1), Yd=(0,1)):
+def plot_spectrogram(spec, Xd=(0,1), Yd=(0,1), norm=colo.LogNorm(vmin=0.000001)):
     #
     x_min, x_max = Xd
     y_min, y_max = Yd
@@ -25,7 +25,7 @@ def plot_spectrogram(spec, Xd=(0,1), Yd=(0,1)):
         #print x[0],x[-1],y[0],y[-1]
         ax = fig.add_subplot(nf*100+11+ch)
         im = NonUniformImage(ax, interpolation='bilinear', cmap=cm.gray_r,
-                norm=colo.LogNorm(vmin=.00001))
+                norm=norm)
         im.set_data(x, y, data.T)
         ax.images.append(im)
         ax.set_xlim(x_min, x_max)
@@ -47,7 +47,8 @@ if __name__ == '__main__':
 Option:
     [-s]    start time in second, default 0
     [-t]    end time, default is duration of song
-    [-g]      type of spectrogram, default dft:
+    [-o]    output file
+    [-g]    type of spectrogram, default dft:
 
         dft --- Discrete Fourier Transform
             [-w]    window size, default 2048
@@ -68,7 +69,7 @@ Option:
         exit()
 
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "g:s:t:h:w:q:n:")
+        opts, args = getopt.getopt(sys.argv[1:], "g:s:t:o:h:w:q:n:")
     except getopt.GetoptError as ex:
         print ex
         exit_with_usage()
@@ -85,6 +86,8 @@ Option:
     graph = 'dft'
     st = 0
     to = None
+    outfile = None
+    norm=colo.LogNorm(vmin=0.000001)
 
     for o, a in opts:
         if o == '-s':
@@ -94,6 +97,8 @@ Option:
         elif o == '-g':
             graph = a
             assert graph in ('dft','cqt','cnt','Y1','Y2','Y3','Y4','Y5')
+        elif o == '-o':
+            outfile = a
 
     if to is None or to > audio.duration:
         r_to = audio.duration
@@ -109,9 +114,9 @@ Option:
             elif o == '-h':
                 hop = int(a)
         spec = [[]]
-        gram = dft.Spectrum(audio)
+        gram = dft.PowerSpectrum(audio)
         for freqs in gram.walk(win, hop, start=st, end=to, join_channels=True):
-            spec[0].append(abs(freqs))
+            spec[0].append(freqs)
     #
     elif graph == 'cqt':
         Q = 34
@@ -143,7 +148,7 @@ Option:
                 sys.stdout.flush()
             spec[0].append(abs(freqs))
         print ""
-
+    #
     elif graph in ('Y1','Y2','Y3','Y4','Y5'):
         N = 24
         hop = 0.01
@@ -161,9 +166,19 @@ Option:
             if t%100==0:
                 sys.stdout.write('%d...' % t)
                 sys.stdout.flush()
-            spec[0].append(abs(freqs))
+            spec[0].append(freqs)
         print ""
+        if graph == 'Y1':
+            norm = colo.Normalize(vmin=auditory.dB_MIN, vmax=-10)
+        elif graph == 'Y2':
+            norm = colo.Normalize(vmin=0, vmax=0.5)
+        elif graph == 'Y3':
+            norm = colo.Normalize(vmin=-0.5, vmax=0.5)
 
+    plot_spectrogram(numpy.array(spec), (st,r_to), (0.,1.), norm=norm)
+    if outfile:
+        out = SpectrogramFile(outfile, 'w')
+        out.dump(spec[0])
+        out.close()
 
-    plot_spectrogram(numpy.array(spec), (st,r_to), (0.,1.))
 

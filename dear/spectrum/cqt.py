@@ -1,11 +1,12 @@
 #-*- coding: utf-8 -*-
 
-from _base import SpectrumBase
+from _base import *
 import numpy
 
 
 A0 = 27.5
 A1 = 55.0
+C8 = 4186.01
 A8 = 7040.0
 
 class Spectrum(SpectrumBase):
@@ -42,7 +43,7 @@ class Spectrum(SpectrumBase):
                 for wl,pre in zip(pre_var.WL, pre_var.PRE)])
         return frame
 
-    def walk(self, Q, freq_base=A0, freq_max=A8, hop=0.02, start=0, end=None,
+    def walk(self, Q, freq_base=A0, freq_max=C8, hop=0.02, start=0, end=None,
             join_channels=True, win_shape=numpy.hamming):
         ''''''
         #
@@ -143,7 +144,7 @@ class CNTSpectrum(SpectrumBase):
         #
         return N, k_max, win, step, var
 
-    def walk(self, N, freq_base=A0, freq_max=A8, hop=0.02, start=0, end=None,
+    def walk(self, N, freq_base=A0, freq_max=C8, hop=0.02, start=0, end=None,
             join_channels=True, win_shape=numpy.hamming):
         ''''''
         n, k_max, win, step, var = self._calculate_params(N, freq_base,
@@ -155,4 +156,24 @@ class CNTSpectrum(SpectrumBase):
             else:
                 yield [transform(ch,n,k_max,pre_var=var) \
                         for ch in samples]
+
+
+class CNTPowerSpectrum(CNTSpectrum):
+
+    @staticmethod
+    def transform(samples, N, k_max=None, win_shape=numpy.hamming, pre_var=None):
+        if not pre_var:
+            if not k_max:
+                N = int(N)
+                assert N > 1 
+                Q = 1. / (2.**(1./N) - 1)
+                Q = max(2, int(round(Q)))
+                assert 1 < Q <= len(samples) / 2
+                k_max = int(numpy.log2(float(len(samples))/Q/2) * N)
+            pre_var = Spectrum.pre_calculate(N,k_max,len(samples),win_shape)
+        frame = numpy.array(
+            [numpy.sum(samples[:wl] * pre)\
+                for wl,pre in zip(pre_var.WL, pre_var.PRE)])
+        return (frame.real**2 + frame.imag**2) / pre_var.WL
+
 
