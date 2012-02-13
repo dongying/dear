@@ -69,7 +69,7 @@ Option:
         exit()
 
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "g:s:t:o:h:w:q:n:")
+        opts, args = getopt.getopt(sys.argv[1:], "g:s:t:o:h:w:q:n:r")
     except getopt.GetoptError as ex:
         print ex
         exit_with_usage()
@@ -134,35 +134,43 @@ Option:
     elif graph == 'cnt':
         N = 24
         hop = 0.02
+        rw = False
         for o, a in opts:
             if o == '-n':
                 N = int(a)
             elif o == '-h':
                 hop = float(a)
+            elif o == '-r':
+                rw = True
         spec = [[]]
-        gram = cqt.CNTSpectrum(audio)
+        gram = cqt.CNTPowerSpectrum(audio)
         print 'total:', int((r_to-st)/hop)
-        for t, freqs in enumerate(gram.walk(N=N, hop=hop, start=st, end=to)):
+        for t, freqs in enumerate(
+                gram.walk(N=N, hop=hop, start=st, end=to, resize_win=rw)):
             if t%100==0:
                 sys.stdout.write('%d...' % t)
                 sys.stdout.flush()
-            spec[0].append(abs(freqs))
+            spec[0].append(freqs)
         print ""
     #
     elif graph in ('Y1','Y2','Y3','Y4','Y5'):
         N = 24
         hop = 0.01
+        rw = False
         for o, a in opts:
             if o == '-n':
                 N = int(a)
             elif o == '-h':
                 hop = float(a)
+            elif o == '-r':
+                rw = True
         spec = [[]]
         #gram = cqt.CNTSpectrum(audio)
         gram = getattr(auditory,graph)
         gram = gram(audio)
         print 'total:', int((r_to-st)/hop)
-        for t, freqs in enumerate(gram.walk(N=N, hop=hop, start=st, end=to)):
+        for t, freqs in enumerate(
+                gram.walk(N=N, hop=hop, start=st, end=to, resize_win=rw)):
             if t%100==0:
                 sys.stdout.write('%d...' % t)
                 sys.stdout.flush()

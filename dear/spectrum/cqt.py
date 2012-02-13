@@ -78,29 +78,48 @@ class Spectrum(SpectrumBase):
 
 
 class CNTSpectrum(SpectrumBase):
+    MIN_Q = 8
 
     @staticmethod
-    def pre_calculate(N, k_max, win, win_shape):
+    def pre_calculate(N, k_max, win, win_shape, sr=None, resize=True):
         var = {}
         #
-        Q = 1. / (2.**(1./N) - 1)
-        Q = max(2, int(round(Q)))
+        Q_f = 1. / (2.**(1./N) - 1)
+        Q = max(2, int(round(Q_f)))
+        QV = numpy.array([Q] * (k_max+1))
         WL = numpy.array(
-                [int(round(win/2.**(float(k)/N))) for k in xrange(k_max+1)])
+                [win/2.**(float(k)/N) for k in xrange(k_max+1)])
+        if resize:
+            if sr is None:
+                sr = win
+            tmp_q = CNTSpectrum.MIN_Q
+            for i,wl in enumerate(WL):
+                delta_wl = float(wl) / Q_f
+                tmp_wl = int(round(delta_wl * tmp_q))
+                tmp_wl_next = int(round(delta_wl * (tmp_q+1)))
+                while tmp_wl < sr/10. and (tmp_wl_next) <= win:
+                    tmp_q += 1
+                    tmp_wl = tmp_wl_next
+                    tmp_wl_next = int(round(delta_wl * (tmp_q+1)))
+                if tmp_wl <= win:
+                    QV[i] = tmp_q
+                    WL[i] = tmp_wl
+        WL = numpy.array(numpy.round(WL), int)
         var['WL'] = WL
+        var['QV'] = QV
         #
         PRE = []
-        for wl in WL:
+        for q, wl in zip(QV,WL):
             arr = 2.*numpy.pi * numpy.arange(wl) / wl
             PRE.append(
-                win_shape(wl) * (numpy.cos(arr*Q) - numpy.sin(arr*Q)*1j)
+                win_shape(wl) * (numpy.cos(arr*q) - numpy.sin(arr*q)*1j)
             )
         var['PRE'] = PRE
         #
         return type('variables', (object,), var)
 
     @staticmethod
-    def transform(samples, N, k_max=None, win_shape=numpy.hamming, 
+    def transform(samples, N, k_max=None, win_shape=numpy.hanning, 
             norm=True, pre_var=None):
         if not pre_var:
             if not k_max:
@@ -119,7 +138,7 @@ class CNTSpectrum(SpectrumBase):
         return frame
 
     def _calculate_params(self, N, freq_base=A0, freq_max=A8, hop=0.02,
-            win_shape=numpy.hamming):
+            win_shape=numpy.hanning, resize_win=True):
         N = int(N)
         assert N > 1
         Q = 1. / (2.**(1./N) - 1)
@@ -135,20 +154,23 @@ class CNTSpectrum(SpectrumBase):
         assert 0 < step <= win 
         #
         k_max = int(numpy.log2(float(freq_max)/freq_base) * N)
-        var = self.pre_calculate(N, k_max, win_f, win_shape)
+        var = self.pre_calculate(N, k_max, win_f, win_shape, samplerate, 
+                resize=resize_win)
         print var.WL
+        print var.QV
+        win = var.WL.max()
         fqs = []
-        for wl in var.WL:
-            fqs.append("%.2f" % (float(self.audio.samplerate) / wl * Q))
+        for q,wl in zip(var.QV,var.WL):
+            fqs.append("%.2f" % (float(self.audio.samplerate) / wl * q))
         print fqs
         #
         return N, k_max, win, step, var
 
     def walk(self, N, freq_base=A0, freq_max=C8, hop=0.02, start=0, end=None,
-            join_channels=True, win_shape=numpy.hamming):
+            join_channels=True, win_shape=numpy.hanning, resize_win=True):
         ''''''
         n, k_max, win, step, var = self._calculate_params(N, freq_base,
-                freq_max, hop, win_shape)
+                freq_max, hop, win_shape, resize_win)
         transform = self.transform
         for samples in self.audio.walk(win, step, start, end, join_channels):
             if join_channels:
@@ -161,7 +183,8 @@ class CNTSpectrum(SpectrumBase):
 class CNTPowerSpectrum(CNTSpectrum):
 
     @staticmethod
-    def transform(samples, N, k_max=None, win_shape=numpy.hamming, pre_var=None):
+    def transform(samples, N, k_max=None, win_shape=numpy.hanning, 
+            pre_var=None):
         if not pre_var:
             if not k_max:
                 N = int(N)

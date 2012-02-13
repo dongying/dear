@@ -11,10 +11,10 @@ inf = float('inf')
 class Y1(CNTPowerSpectrum):
     
     def walk(self, N=24, freq_base=A0, freq_max=C8, hop=0.01, start=0, 
-            end=None, win_shape=numpy.hamming):
+            end=None, win_shape=numpy.hamming, resize_win=True):
         parent = super(Y1, self)
         for vector in parent.walk(N,freq_base,freq_max,hop,start,end,
-                join_channels=True,win_shape=win_shape): 
+                join_channels=True,win_shape=win_shape,resize_win=resize_win):
             v = numpy.maximum(vector, PW_MIN)
             yield 20 * numpy.log10(v / PWI_THS)
 
