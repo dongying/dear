@@ -44,7 +44,7 @@ if __name__ == '__main__':
     def exit_with_usage():
         print """Usage: $ python -m dear.spectrogram <options> /path/to/song
 
-Option:
+Options:
     [-s]    start time in second, default 0
     [-t]    end time, default is duration of song
     [-o]    output file
@@ -128,7 +128,11 @@ Option:
                 hop = float(a)
         spec = [[]]
         gram = cqt.Spectrum(audio)
-        for freqs in gram.walk(Q=Q, hop=hop, start=st, end=to, join_channels=True):
+        print 'total:', int((r_to-st)/hop)
+        for t,freqs in enumerate(gram.walk(Q=Q, hop=hop, start=st, end=to, join_channels=True)):
+            if t%100 == 0:
+                sys.stdout.write('%d...' % t)
+                sys.stdout.flush()
             spec[0].append(abs(freqs))
     #
     elif graph == 'cnt':

@@ -52,11 +52,11 @@ class SpectrogramFile(object):
         return numpy.array(struct.unpack('<'+'d'*dc, buf))
 
     def _write_frame(self, vector):
-        buf = struct.pack('<'+'d'*len(vector), vector)
+        buf = struct.pack('<'+'d'*len(vector), *vector)
         self._fh.write(buf)
 
     def close(self):
-        self.close()
+        self._fh.close()
 
     def walk(self, offset=0, limit=None):
         fc, dc = self._read_header()
@@ -76,10 +76,10 @@ class SpectrogramFile(object):
     def dump(self, spectrum_iter):
         self._write_header(0,0)
         fc, dc = 0, None
-        for fc, vector in enumerate(spectrum_iter):
+        for vector in spectrum_iter:
             self._write_frame(vector)
+            fc += 1
             if dc is None:
                 dc = len(vector)
-        fc += 1
         self._write_header(fc, dc)
 

@@ -1,6 +1,8 @@
 #-*- coding: utf-8 -*-
 
-import cqt, dft, auditory
+import dft
+import cqt
+import auditory
 
 DFTSpectrum = dft.Spectrum
 DFTPowerSpectrum = dft.PowerSpectrum
