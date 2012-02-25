@@ -1,6 +1,6 @@
 #-*- coding: utf-8 -*-
 
-import numpy
+import numpy as np
 import matplotlib
 #matplotlib.use('GTKAgg')
 import matplotlib.pyplot as plt
@@ -20,8 +20,8 @@ def plot_spectrogram(spec, Xd=(0,1), Yd=(0,1), norm=colo.LogNorm(vmin=0.000001))
     nf = len(spec)
     for ch, data in enumerate(spec):
         #print ch, data.shape
-        x = numpy.linspace(x_min, x_max, data.shape[0])
-        y = numpy.linspace(y_min, y_max, data.shape[1])
+        x = np.linspace(x_min, x_max, data.shape[0])
+        y = np.linspace(y_min, y_max, data.shape[1])
         #print x[0],x[-1],y[0],y[-1]
         ax = fig.add_subplot(nf*100+11+ch)
         im = NonUniformImage(ax, interpolation='bilinear', cmap=cm.gray_r,
@@ -33,7 +33,7 @@ def plot_spectrogram(spec, Xd=(0,1), Yd=(0,1), norm=colo.LogNorm(vmin=0.000001))
         ax.set_title('Channel %d' % ch)
         #ax.set_xlabel('timeline')
         ax.set_ylabel('frequency')
-        print 'Statistics: max<%.3f> min<%.3f> mean<%.3f> median<%.3f>' % (data.max(), data.min(), data.mean(), numpy.median(data))
+        print 'Statistics: max<%.3f> min<%.3f> mean<%.3f> median<%.3f>' % (data.max(), data.min(), data.mean(), np.median(data))
     #
     plt.show()
 
@@ -58,9 +58,15 @@ Options:
             [-q]    Q, default 34
             [-h]    hop in second, default 0.02
 
-        cnt --- Constant-N transform
+        cnt --- Constant-N Transform
             [-n]    N, default 24
             [-h]    hop in second, default 0.02
+
+        gmt --- Gammatone Wavelet Transform
+            [-n]    N, default 64
+            [-w]    combine length in second, default 0.025
+            [-h]    hop in second, default 0.01
+            [-f]    frequency boundary, default (110, 4200)
 
         Y1...Y5 --- Auditory Spectrograms
             [-n]    N, default 24
@@ -69,7 +75,7 @@ Options:
         exit()
 
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "g:s:t:o:h:w:q:n:r")
+        opts, args = getopt.getopt(sys.argv[1:], "g:s:t:o:h:w:q:n:r:f:")
     except getopt.GetoptError as ex:
         print ex
         exit_with_usage()
@@ -96,7 +102,7 @@ Options:
             to = float(a)
         elif o == '-g':
             graph = a
-            assert graph in ('dft','cqt','cnt','Y1','Y2','Y3','Y4','Y5')
+            assert graph in ('dft','cqt','cnt','gmt','Y1','Y2','Y3','Y4','Y5')
         elif o == '-o':
             outfile = a
 
@@ -156,6 +162,31 @@ Options:
                 sys.stdout.flush()
             spec[0].append(freqs)
         print ""
+    elif graph == 'gmt':
+        N = 64
+        win = 0.025
+        hop = 0.010
+        freqs = [110., 4435.]
+        for o, a in opts:
+            if o == '-n':
+                N = int(a)
+            elif o == '-h':
+                hop = float(a)
+            elif o == '-w':
+                win = float(a)
+            elif o == '-f':
+                freqs = [float(f) for f in a.split(',',1)]
+        spec = [[]]
+        gram = auditory.GammatoneSpectrum(audio)
+        print 'total:', int((r_to-st)/hop)
+        for t, freqs in enumerate(
+                gram.walk(N=N, freq_base=freqs[0], freq_max=freqs[1], 
+                    start=st, end=to, combine=True, twin=win, thop=hop)):
+            if t%100==0:
+                sys.stdout.write('%d...' % t)
+                sys.stdout.flush()
+            spec[0].append(freqs)
+        print ""
     #
     elif graph in ('Y1','Y2','Y3','Y4','Y5'):
         N = 24
@@ -180,14 +211,17 @@ Options:
                 sys.stdout.flush()
             spec[0].append(freqs)
         print ""
-        if graph == 'Y1':
-            norm = colo.Normalize(vmin=auditory.dB_MIN, vmax=-10)
-        elif graph == 'Y2':
-            norm = colo.Normalize(vmin=0, vmax=0.5)
-        elif graph == 'Y3':
-            norm = colo.Normalize(vmin=-0.5, vmax=0.5)
 
-    plot_spectrogram(numpy.array(spec), (st,r_to), (0.,1.), norm=norm)
+    # to dB scale
+    if graph in ('gmt','Y2','Y3','Y4','Y5'):
+        dBmax, dBmin = -15., -70.
+        magmin = 10**(dBmin/20)
+        for g in spec:
+            for i,frame in enumerate(g):
+                g[i] = 20*np.log10(np.maximum(frame,magmin))
+        norm = colo.Normalize(vmin=dBmin, vmax=dBmax) 
+
+    plot_spectrogram(np.array(spec), (0,len(spec[0])), (0,len(spec[0][0])), norm=norm)
     if outfile:
         out = SpectrogramFile(outfile, 'w')
         out.dump(spec[0])
