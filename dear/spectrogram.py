@@ -69,8 +69,10 @@ Options:
             [-f]    frequency boundary, default (110, 4200)
 
         Y1...Y5 --- Auditory Spectrograms
-            [-n]    N, default 24
+            [-n]    N, default 64
+            [-w]    combine length in second, default 0.025
             [-h]    hop in second, default 0.01
+            [-f]    frequency boundary, default (110, 4200)
 """
         exit()
 
@@ -162,6 +164,7 @@ Options:
                 sys.stdout.flush()
             spec[0].append(freqs)
         print ""
+    #
     elif graph == 'gmt':
         N = 64
         win = 0.025
@@ -189,23 +192,26 @@ Options:
         print ""
     #
     elif graph in ('Y1','Y2','Y3','Y4','Y5'):
-        N = 24
-        hop = 0.01
-        rw = False
+        N = 64
+        win = 0.025
+        hop = 0.010
+        freqs = [110., 4435.]
         for o, a in opts:
             if o == '-n':
                 N = int(a)
             elif o == '-h':
                 hop = float(a)
-            elif o == '-r':
-                rw = True
+            elif o == '-w':
+                win = float(a)
+            elif o == '-f':
+                freqs = [float(f) for f in a.split(',',1)]
         spec = [[]]
-        #gram = cqt.CNTSpectrum(audio)
         gram = getattr(auditory,graph)
         gram = gram(audio)
         print 'total:', int((r_to-st)/hop)
         for t, freqs in enumerate(
-                gram.walk(N=N, hop=hop, start=st, end=to, resize_win=rw)):
+                gram.walk(N=N, freq_base=freqs[0], freq_max=freqs[1], 
+                    start=st, end=to, combine=True, twin=win, thop=hop)):
             if t%100==0:
                 sys.stdout.write('%d...' % t)
                 sys.stdout.flush()
@@ -213,7 +219,7 @@ Options:
         print ""
 
     # to dB scale
-    if graph in ('gmt','Y2','Y3','Y4','Y5'):
+    if graph in ('gmt','Y1','Y2','Y3','Y4','Y5'):
         dBmax, dBmin = -15., -70.
         magmin = 10**(dBmin/20)
         for g in spec:

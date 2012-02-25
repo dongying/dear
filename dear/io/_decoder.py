@@ -27,6 +27,7 @@ for name in decoder_names:
         print ex
 sys.path.pop(-1)
 
+
 def get_decoder(format=None, name=None):
     assert format or name
     if format:
@@ -46,4 +47,10 @@ def get_decoder(format=None, name=None):
         if model is None:
             raise DecoderNotFoundError
         return model
+
+
+def open(path):
+    name, fmt = path.rsplit('.',1)
+    dc = get_decoder(fmt)
+    return dc.Audio(path)
 
