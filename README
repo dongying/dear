@@ -1,8 +1,6 @@
 [Requirement]
 
-libmad
-python 2.7 series
-pymad
 numpy
+scipy
 matplotlib
-
+audioread
