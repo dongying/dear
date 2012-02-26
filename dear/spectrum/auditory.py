@@ -83,7 +83,7 @@ class GammatoneSpectrum(SpectrumBase):
             mtx[...,i] = s4
         return mtx, zi
 
-    def walk(self, N=64, freq_base=A2, freq_max=C8,  start=0, end=None, each=True, combine=False, twin=0.025, thop=0.010):
+    def walk(self, N=64, freq_base=A2, freq_max=C8,  start=0, end=None, each=True, combine=False, twin=0.020, thop=0.010):
         ''''''
         N = int(N)
         assert N > 0
@@ -132,7 +132,7 @@ class Y2(Y1):
             return 0.5
         return 1./(1+np.exp(-gamma*y)) - 0.5
 
-    def walk(self, N=64, freq_base=A2, freq_max=C8,  start=0, end=None, each=True, combine=False, twin=0.025, thop=0.010, gamma=10, cof=4500):
+    def walk(self, N=64, freq_base=A2, freq_max=C8,  start=0, end=None, each=True, combine=False, twin=0.020, thop=0.010, gamma=10, cof=4000):
         ''''''
         samplerate = self.audio.samplerate
         level = 6
@@ -140,64 +140,61 @@ class Y2(Y1):
         ncof = min(0.99, float(cof)*2/samplerate)
         b,a = sig.butter(6, ncof)
         zi = np.zeros((N,level))
-        if not combine:
-            for y in super(Y2, self).walk(N,freq_base,freq_max,start,end,each=False,combine=False):
-                yg = self.g( 
-                        np.diff(np.append(vpre,y,0), 1, 0),
-                        gamma)
-                ygt, zi = sig.lfilter(b, a, yg.T, zi=zi)
+        cstep = int(np.ceil(thop*samplerate))
+        cwin = int(np.ceil(twin*samplerate))
+        Y = np.zeros((0,N))
+        if combine:
+            assert 0 < thop <= twin
+            assert 0 < cstep <= cwin
+        for y in super(Y2, self).walk(N,freq_base,freq_max,start,end,each=False,combine=False):
+            yg = self.g( 
+                    np.diff(np.append(vpre,y,0), 1, 0),
+                    gamma)
+            ygt, zi = sig.lfilter(b, a, yg.T, zi=zi)
+            #ygt = np.zeros((yg.shape[1],yg.shape[0]))
+            #for i, yy in enumerate(yg.T):
+            #    ygt[i], zi[i] = sig.lfilter(b,a,yy,zi=zi[i])
+            if not combine:
                 if each:
                     for v in ygt.T: yield v
                 else:
                     yield ygt.T
-        else:
-            cstep = int(np.ceil(thop*samplerate))
-            cwin = int(np.ceil(twin*samplerate))
-            assert 0 < thop <= twin
-            assert 0 < cstep <= cwin
-            Y = np.zeros((0,N))
-            for y in super(Y2, self).walk(N,freq_base,freq_max,start,end,each=False,combine=False):
-                yg = self.g( 
-                        np.diff(np.append(vpre,y,0), 1, 0),
-                        gamma)
-                vpre = y[-1:]
-                ygt, zi = sig.lfilter(b, a, yg.T, zi=zi)
+            else:
                 Y = np.append(Y, ygt.T, 0)
                 while Y.shape[0] >= cwin:
                     wf, Y = Y[:cwin], Y[cstep:]
                     yield np.sqrt(np.mean(np.square(wf), 0))
-            if Y.shape[0] > 0:
-                yield np.sqrt(np.mean(np.square(Y), 0))
+        if combine and Y.shape[0] > 0:
+            yield np.sqrt(np.mean(np.square(Y), 0))
 
 
 class Y3(Y2):
-    def walk(self, N=64, freq_base=A2, freq_max=C8,  start=0, end=None, each=True, combine=False, twin=0.025, thop=0.010, gamma=10, cof=4500):
-        if not combine:
-            for y in super(Y3, self).walk(N,freq_base,freq_max,start,end,each=False,combine=False,gamma=gamma,cof=cof):
-                y[...,1:] = np.diff(y,1,1)
+    def walk(self, N=64, freq_base=A2, freq_max=C8,  start=0, end=None, each=True, combine=False, twin=0.020, thop=0.010, gamma=10, cof=4500):
+        samplerate = self.audio.samplerate
+        cstep = int(np.ceil(thop*samplerate))
+        cwin = int(np.ceil(twin*samplerate))
+        Y = np.zeros((0,N))
+        if combine:
+            assert 0 < thop <= twin
+            assert 0 < cstep <= cwin
+        for y in super(Y3, self).walk(N,freq_base,freq_max,start,end,each=False,combine=False,gamma=gamma,cof=cof):
+            y[...,1:] = np.diff(y,1,1)
+            if not combine:
                 if each:
                     for v in y: yield v
                 else:
                     yield y
-        else:
-            samplerate = self.audio.samplerate
-            cstep = int(np.ceil(thop*samplerate))
-            cwin = int(np.ceil(twin*samplerate))
-            assert 0 < thop <= twin
-            assert 0 < cstep <= cwin
-            Y = np.zeros((0,N))
-            for y in super(Y3, self).walk(N,freq_base,freq_max,start,end,each=False,combine=False,gamma=gamma,cof=cof):
-                y[...,1:] = np.diff(y,1,1)
+            else:
                 Y = np.append(Y, y, 0)
                 while Y.shape[0] >= cwin:
                     wf, Y = Y[:cwin], Y[cstep:]
                     yield np.sqrt(np.mean(np.square(wf), 0))
-            if Y.shape[0] > 0:
-                yield np.sqrt(np.mean(np.square(Y), 0))
+        if combine and Y.shape[0] > 0:
+            yield np.sqrt(np.mean(np.square(Y), 0))
 
 
 class Y4(Y3):
-    def walk(self, N=64, freq_base=A2, freq_max=C8,  start=0, end=None, each=True, combine=False, twin=0.025, thop=0.010, gamma=10, cof=4500):
+    def walk(self, N=64, freq_base=A2, freq_max=C8,  start=0, end=None, each=True, combine=False, twin=0.020, thop=0.010, gamma=10, cof=4500):
         if not combine:
             for y in super(Y4, self).walk(N,freq_base,freq_max,start,end,each=False,combine=False,gamma=gamma,cof=cof):
                 y = np.maximum(0, y)
@@ -223,5 +220,48 @@ class Y4(Y3):
 
 
 class Y5(Y4):
-    pass
+
+    @staticmethod
+    def poisson(tinteg, tinv, tconst):
+        w = np.arange(0.,tinteg+tinv,tinv,dtype=np.double)
+        return np.exp(-np.flipud(w)/tconst)
+
+    @staticmethod
+    def rectangle(tinteg, tinv):
+        w = np.ones(int(np.ceil(tinteg/tinv)), dtype=np.double)
+        return w
+
+    def walk(self, N=64, freq_base=A2, freq_max=C8,  start=0, end=None, each=True, combine=False, twin=0.020, thop=0.010, gamma=10, cof=4500, tinteg=0.020, tconst=0.008):
+        samplerate = self.audio.samplerate
+        tinv = 1./samplerate
+        #pwin = self.poisson(tinteg, tinv, tconst)
+        pwin = self.rectangle(tinteg, tinv)
+        pwin /= len(pwin)
+        lenpre = len(pwin)-1
+        print lenpre
+        print sum(pwin),pwin[0],pwin[-1]
+        ypre = np.zeros((lenpre,N))
+        cstep = int(np.ceil(thop*samplerate))
+        cwin = int(np.ceil(twin*samplerate))
+        Y = np.zeros((0,N))
+        if combine:
+            assert 0 < thop <= twin
+            assert 0 < cstep <= cwin
+        for y in super(Y5, self).walk(N,freq_base,freq_max,start,end,each=False,combine=False,gamma=gamma,cof=cof):
+            ym = np.append(ypre, y, 0)
+            ypre = ym[-lenpre:]
+            for i,yband in enumerate(ym.T):
+                y[...,i] = np.sqrt(np.convolve(np.square(yband), pwin, 'valid'))
+            if not combine:
+                if each:
+                    for v in y: yield v
+                else:
+                    yield y
+            else:
+                Y = np.append(Y, y, 0)
+                while Y.shape[0] >= cwin:
+                    wf, Y = Y[:cwin], Y[cstep:]
+                    yield np.sqrt(np.mean(np.square(wf), 0))
+        if combine and Y.shape[0] > 0:
+            yield np.sqrt(np.mean(np.square(Y), 0))
 
