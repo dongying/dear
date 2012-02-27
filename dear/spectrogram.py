@@ -61,6 +61,7 @@ Options:
         cnt --- Constant-N Transform
             [-n]    N, default 24
             [-h]    hop in second, default 0.02
+            [-r]    resize window size of each of the bands if specified.
 
         gmt --- Gammatone Wavelet Transform
             [-n]    N, default 64
@@ -78,7 +79,7 @@ Options:
         exit()
 
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "g:s:t:o:h:w:q:n:r:f:c")
+        opts, args = getopt.getopt(sys.argv[1:], "g:s:t:o:h:w:q:n:f:rc")
     except getopt.GetoptError as ex:
         print ex
         exit_with_usage()
@@ -171,6 +172,7 @@ Options:
         win = 0.025
         hop = 0.010
         freqs = [110., 4435.]
+        combine=False
         for o, a in opts:
             if o == '-n':
                 N = int(a)
@@ -180,12 +182,14 @@ Options:
                 win = float(a)
             elif o == '-f':
                 freqs = [float(f) for f in a.split(',',1)]
+            elif o == '-c':
+                combine=True
         spec = [[]]
         gram = auditory.GammatoneSpectrum(audio)
         print 'total:', int((r_to-st)/hop)
         for t, freqs in enumerate(
                 gram.walk(N=N, freq_base=freqs[0], freq_max=freqs[1], 
-                    start=st, end=to, combine=True, twin=win, thop=hop)):
+                    start=st, end=to, combine=combine, twin=win, thop=hop)):
             if t%100==0:
                 sys.stdout.write('%d...' % t)
                 sys.stdout.flush()
