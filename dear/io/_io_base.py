@@ -13,6 +13,10 @@ class AudioBase(object):
             raise ValueError("`%s' is not a file." % path)
 
     @property
+    def path(self):
+        return self._path
+
+    @property
     def samplerate(self):
         '''Get sample rate.'''
         raise NotImplementedError

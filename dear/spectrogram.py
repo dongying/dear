@@ -11,12 +11,12 @@ import matplotlib.colors as colo
 from dear.spectrum import cqt, dft, auditory, SpectrogramFile
 
 
-def plot_spectrogram(spec, Xd=(0,1), Yd=(0,1), norm=colo.LogNorm(vmin=0.000001)):
+def plot_spectrogram(spec, Xd=(0,1), Yd=(0,1), norm=colo.LogNorm(vmin=0.000001), figname=None):
     #
     x_min, x_max = Xd
     y_min, y_max = Yd
     #
-    fig = plt.figure()
+    fig = plt.figure(num=figname)
     nf = len(spec)
     for ch, data in enumerate(spec):
         #print ch, data.shape
@@ -235,7 +235,8 @@ Options:
                 g[i] = 20*np.log10(np.maximum(frame,magmin))
         norm = colo.Normalize(vmin=dBmin, vmax=dBmax) 
 
-    plot_spectrogram(np.array(spec), (0,len(spec[0])), (0,len(spec[0][0])), norm=norm)
+    figname = "%s - %s" % (graph, audio.path)
+    plot_spectrogram(np.array(spec), (0,len(spec[0])), (0,len(spec[0][0])), norm=norm, figname=figname)
     if outfile:
         out = SpectrogramFile(outfile, 'w')
         out.dump(spec[0])
