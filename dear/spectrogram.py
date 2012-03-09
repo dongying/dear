@@ -9,6 +9,7 @@ from matplotlib.image import NonUniformImage
 import matplotlib.colors as colo
 
 from dear.spectrum import cqt, dft, auditory, SpectrogramFile
+from dear.analysis import MFCCs
 
 
 def plot_spectrogram(spec, Xd=(0,1), Yd=(0,1), norm=colo.LogNorm(vmin=0.000001), figname=None):
@@ -75,11 +76,17 @@ Options:
             [-h]    hop in second, default 0.01
             [-f]    frequency boundary, default (110, 4200)
             [-c]    Combine frames by 0.02 seconds if specified.
+
+        mfcc --- MFCCs Spectrogram
+            [-n]    number of bands, default 20
+            [-w]    window size, default 2048
+            [-h]    step size, default 1024
+            [-f]    frequency boundary, default (0, 7040)
 """
         exit()
 
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "g:s:t:o:h:w:q:n:f:rc")
+        opts, args = getopt.getopt(sys.argv[1:], "g:s:t:o:h:w:q:n:f:b:rc")
     except getopt.GetoptError as ex:
         print ex
         exit_with_usage()
@@ -106,7 +113,7 @@ Options:
             to = float(a)
         elif o == '-g':
             graph = a
-            assert graph in ('dft','cqt','cnt','gmt','Y1','Y2','Y3','Y4','Y5')
+            assert graph in ('dft','cqt','cnt','gmt','Y1','Y2','Y3','Y4','Y5','mfcc')
         elif o == '-o':
             outfile = a
 
@@ -127,6 +134,26 @@ Options:
         gram = dft.PowerSpectrum(audio)
         for freqs in gram.walk(win, hop, start=st, end=to, join_channels=True):
             spec[0].append(freqs)
+    #
+    elif graph == 'mfcc':
+        N = 20
+        fmin, fmax = 0., 7040.
+        win = 2048
+        hop = 1024
+        for o, a in opts:
+            if o == '-w':
+                win = int(a)
+            elif o == '-h':
+                hop = int(a)
+            elif o == '-n':
+                N = int(a)
+            elif o == '-f':
+                fmin, fmax = [float(f) for f in a.split(',',1)]
+        spec = [[]]
+        gram = MFCCs(audio)
+        for freqs in gram.walk(N, fmin, fmax, win, hop, st, to):
+            spec[0].append(freqs)
+        norm = colo.Normalize()
     #
     elif graph == 'cqt':
         Q = 34

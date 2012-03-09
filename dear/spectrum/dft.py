@@ -37,9 +37,9 @@ class Spectrum(SpectrumBase):
 
     def walk(self, win=1024, step=512, start=0, end=None, join_channels=True,
             win_shape=numpy.hamming, mpre=False):
-        var = self.pre_calculate(win, win_shape, mpre)
+        var = Spectrum.pre_calculate(win, win_shape, mpre)
         self._var = var
-        transform = mpre and self.transform_pre or self.transform
+        transform = mpre and Spectrum.transform_pre or Spectrum.transform
         #
         for samples in self.audio.walk(win, step, start, end, join_channels):
             if join_channels:
