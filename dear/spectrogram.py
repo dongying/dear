@@ -72,10 +72,10 @@ Options:
 
         Y1...Y5 --- Auditory Spectrograms
             [-n]    N, default 64
+            [-f]    frequency boundary, default (110, 4200)
+            [-c]    Combine frames by -w and -h.
             [-w]    combine length in second, default 0.025
             [-h]    hop in second, default 0.01
-            [-f]    frequency boundary, default (110, 4200)
-            [-c]    Combine frames by 0.02 seconds if specified.
 
         mfcc --- MFCCs Spectrogram
             [-n]    number of bands, default 20

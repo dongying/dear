@@ -50,7 +50,7 @@ class MFCCs(DFTSpectrum):
         f = np.dot(np.log(f), var.DCTMatrix)
         return f
 
-    def walk(self, N=20, freq_min=0, freq_max=7040., win=2048, step=1024, start=0, end=None, win_shape=np.hamming):
+    def walk(self, N=20, freq_min=0, freq_max=7040., win=2048, step=1024, start=0, end=None, win_shape=np.hanning):
         samplerate = self.audio.samplerate
         nqfreq = samplerate / 2.
         #
@@ -60,8 +60,8 @@ class MFCCs(DFTSpectrum):
         freq_max = (freq_max is None) and nqfreq or freq_max
         assert 0<= freq_min < freq_max <= nqfreq
         #
-        var = self.pre_calculate(N, win, freq_min, freq_max, nqfreq)
+        var = MFCCs.pre_calculate(N, win, freq_min, freq_max, nqfreq)
         for samples in super(MFCCs, self).walk(win, step, start, end, join_channels=True, win_shape=win_shape):
-            frame = self.transform(samples, var)
+            frame = MFCCs.transform(samples, var)
             yield frame
 

@@ -64,3 +64,14 @@ class PowerSpectrum(Spectrum):
         frame = numpy.fft.rfft(pre_var.W * samples)
         return (frame.real**2 + frame.imag**2) / pre_var.WL
 
+    def walk(self, win=1024, step=512, start=0, end=None, join_channels=True,
+            win_shape=numpy.hamming, mpre=False):
+        var = PowerSpectrum.pre_calculate(win, win_shape, mpre)
+        self._var = var
+        transform = mpre and PowerSpectrum.transform_pre or PowerSpectrum.transform
+        #
+        for samples in self.audio.walk(win, step, start, end, join_channels):
+            if join_channels:
+                yield transform(samples, pre_var=var)
+            else: yield [transform(ch, pre_var=var) for ch in samples]
+
