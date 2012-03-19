@@ -33,8 +33,8 @@ class SpectrogramFile(object):
     def _read_header(self):
         '''
         Little-endian
-        |... 4 bytes int ...|... 4 bytes int ...|
-        |   frames count    | dimensions count  |
+        |... 4 bytes unsigned int ...|... 4 bytes unsigned int ...|
+        |        frames count        |      dimensions count      |
         '''
         self._fh.seek(0)
         buf = self._fh.read(4*2)

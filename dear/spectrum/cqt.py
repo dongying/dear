@@ -18,7 +18,7 @@ class Spectrum(SpectrumBase):
         var = {}
         #
         t = 1 + 1/float(Q)
-        WL = [max(2, int(round(win / t**k))) for k in xrange(k_max+1)]
+        WL = [max(2, int(round(win / t**k))) for k in xrange(k_max)]
         var['WL'] = WL
         PRE = []
         for wl in WL:
@@ -63,7 +63,7 @@ class Spectrum(SpectrumBase):
                 / numpy.log2(float(Q+1)/Q))
         #
         var = self.pre_calculate(Q, k_max, win, win_shape)
-        print var.WL
+        print len(var.WL), var.WL
         fqs = []
         for wl in var.WL:
             fqs.append("%.2f" % (float(samplerate) / wl * Q))
@@ -78,6 +78,23 @@ class Spectrum(SpectrumBase):
                         for ch in samples]
 
 
+class CQTPowerSpectrum(Spectrum):
+    @staticmethod
+    def transform(samples, Q, k_max=None, win_shape=numpy.hamming,
+            pre_var=None):
+        if not pre_var:
+            if not k_max:
+                assert 1 < Q <= len(samples) / 2
+                k_max = int(numpy.log2(float(len(samples))/Q/2) \
+                        / numpy.log2(float(Q+1)/Q))
+            pre_var = CQTPowerSpectrum.pre_calculate(Q,k_max,len(samples),win_shape)
+        frame = numpy.array(
+            [numpy.sum(samples[:wl] * pre) \
+                for wl,pre in zip(pre_var.WL, pre_var.PRE)])
+        return (frame.real**2 + frame.imag**2) / pre_var.WL
+
+
+
 class CNTSpectrum(SpectrumBase):
     MIN_Q = 8
 
@@ -87,9 +104,9 @@ class CNTSpectrum(SpectrumBase):
         #
         Q_f = 1. / (2.**(1./N) - 1)
         Q = max(2, int(round(Q_f)))
-        QV = numpy.array([Q] * (k_max+1))
+        QV = numpy.array([Q] * (k_max))
         WL = numpy.array(
-                [win/2.**(float(k)/N) for k in xrange(k_max+1)])
+                [win/2.**(float(k)/N) for k in xrange(k_max)])
         if resize:
             if sr is None:
                 sr = win
@@ -157,7 +174,7 @@ class CNTSpectrum(SpectrumBase):
         k_max = int(numpy.log2(float(freq_max)/freq_base) * N)
         var = self.pre_calculate(N, k_max, win_f, win_shape, samplerate, 
                 resize=resize_win)
-        print var.WL
+        print var.WL.shape, var.WL
         print var.QV
         win = var.WL.max()
         fqs = []

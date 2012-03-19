@@ -164,13 +164,13 @@ Options:
             elif o == '-h':
                 hop = float(a)
         spec = [[]]
-        gram = cqt.Spectrum(audio)
+        gram = cqt.CQTPowerSpectrum(audio)
         print 'total:', int((r_to-st)/hop)
         for t,freqs in enumerate(gram.walk(Q=Q, hop=hop, start=st, end=to, join_channels=True)):
             if t%100 == 0:
                 sys.stdout.write('%d...' % t)
                 sys.stdout.flush()
-            spec[0].append(abs(freqs))
+            spec[0].append(freqs)
     #
     elif graph == 'cnt':
         N = 24
@@ -187,7 +187,7 @@ Options:
         gram = cqt.CNTPowerSpectrum(audio)
         print 'total:', int((r_to-st)/hop)
         for t, freqs in enumerate(
-                gram.walk(N=N, hop=hop, start=st, end=to, resize_win=rw)):
+                gram.walk(N=N, freq_base=55., freq_max=7040, hop=hop, start=st, end=to, resize_win=rw)):
             if t%100==0:
                 sys.stdout.write('%d...' % t)
                 sys.stdout.flush()
