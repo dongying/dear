@@ -166,7 +166,7 @@ Options:
         spec = [[]]
         gram = cqt.CQTPowerSpectrum(audio)
         print 'total:', int((r_to-st)/hop)
-        for t,freqs in enumerate(gram.walk(Q=Q, hop=hop, start=st, end=to, join_channels=True)):
+        for t,freqs in enumerate(gram.walk(Q=Q, freq_base=55., freq_max=7040, hop=hop, start=st, end=to, join_channels=True)):
             if t%100 == 0:
                 sys.stdout.write('%d...' % t)
                 sys.stdout.flush()
@@ -254,8 +254,14 @@ Options:
         print ""
 
     # to dB scale
-    if graph in ('gmt','Y1','Y2','Y3','Y4','Y5'):
-        dBmax, dBmin = -15., -70.
+    dBmax, dBmin = -15., -70.
+    if graph in ('dft','cqt','cnt'):
+        magmin = 10**(dBmin/20)
+        for g in spec:
+            for i,frame in enumerate(g):
+                g[i] = 20*np.log10(np.maximum(frame/20.,magmin))
+        norm = colo.Normalize(vmin=dBmin, vmax=dBmax) 
+    elif graph in ('gmt','Y1','Y2','Y3','Y4','Y5'):
         magmin = 10**(dBmin/20)
         for g in spec:
             for i,frame in enumerate(g):
