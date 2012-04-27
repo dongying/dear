@@ -1,5 +1,7 @@
 *.pyc
 *.swp
 build
+dist
+dear.egg-info
 .DS_Store
 ref
