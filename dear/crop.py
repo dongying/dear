@@ -85,15 +85,17 @@ if __name__ == '__main__':
     def exit_with_usage():
         print """Usage: $ python -m dear.crop <options>
 Options:
-     -i     input path
-     -o     output path
-    [-l]    length of clip, default 30 seconds.
-    [-s]    start time in second, defaute 0
-    [-t]    end time, default is duration of song
-    [-a]    algorithm, could be one of ('mmag','mpwg'), default 'mmag'
-    [-r]    samplerate, default 22050
-    [-b]    bitrate, default 64k(bit)
-    [-d]    dim seconds of begining and ending, default 4
+     -i         input path
+     -o         output path
+    [-l]        length of clip, default 30 seconds.
+    [-s]        start time in second, defaute 0
+    [-t]        end time, default is duration of song
+    [-a]        algorithm, could be one of ('mmag','mpwg'), default 'mmag'
+    [-r]        samplerate, default 22050
+    [-b]        bitrate, default 64k(bit)
+    [-d]        dim seconds of begining and ending, default 4
+    [--ffmpeg]  specify the path of ffmpeg executable, default 'ffmpeg'
+    [--sox]     specify the path of sox executable, default 'sox'
 """
         exit()
 
@@ -116,8 +118,13 @@ Options:
         bitrate = '64k'
         do_crop = True
         dim = 4
+        FFMPEG = 'ffmpeg'
+        SOX = 'sox'
         #
-        opts, args = getopt.getopt(sys.argv[1:], "i:o:l:s:t:a:r:b:d:")
+        opts, args = getopt.getopt(sys.argv[1:],
+                "i:o:l:s:t:a:r:b:d:",
+                ('ffmpeg=','sox=',)
+            )
         for o, a in opts:
             if o == '-i':
                 inputf = a
@@ -137,6 +144,10 @@ Options:
                 bitrate = a
             elif o == '-d':
                 dim = int(a)
+            elif o == '--ffmpeg':
+                FFMPEG = a
+            elif o == '--sox':
+                SOX = a
         assert os.path.isfile(inputf)
         assert output is not None
         assert algorithm in CROP_ALGORITHMS
@@ -166,14 +177,14 @@ Options:
     print start, end, duration
 
     tmpfile = output + '.crop.tmp.wav'
-    cmd = ['ffmpeg','-i',inputf,'-ss',str(start),'-t',str(duration),
+    cmd = [FFMPEG,'-i',inputf,'-ss',str(start),'-t',str(duration),
             '-ac','1','-ar',str(samplerate),'-ab',bitrate,
             tmpfile]
     p = subprocess.Popen(cmd)
     p.wait()
 
     if dim > 0 and duration > 2*dim:
-        cmd = ['sox',tmpfile,output,'fade','p',str(dim),
+        cmd = [SOX,tmpfile,output,'fade','p',str(dim),
                 str(duration-1),str(dim)]
         p = subprocess.Popen(cmd)
         p.wait()
